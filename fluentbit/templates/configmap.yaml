@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  namespace: {{ .Release.Namespace }}
+data:
+  fluent-bit.conf: |
+    [INPUT]
+      Name              tail
+      Path              /var/log/pods/*/log-generator/*.log
+
+    {{- if eq .Values.output "opensearch" }}
+    [OUTPUT]
+      Name  opensearch
+      Match *
+      Host  opensearch-svc.opensearch
+      Port  9200
+      Index my_index
+      Type  my_type
+    {{- else if eq .Values.output "loki" }}
+    [OUTPUT]
+      name                   loki
+      host                   loki-svc.loki
+      match                  *
+      labels                 job=fluentbit
+      auto_kubernetes_labels on
+    {{- else if eq .Values.output "datadog" }}
+    [OUTPUT]
+      Name             datadog
+      Match            *
+      Host             http-intake.logs.us5.datadoghq.com
+      TLS              on
+      compress         gzip
+      apikey           {{ .Values.datadog.apiKey }}
+      dd_source        nginx
+      dd_message_key   log
+      dd_tags          env:tcc
+    {{- else }}
+    [OUTPUT]
+      Name        stdout
+      Match       *
+    {{- end }}
