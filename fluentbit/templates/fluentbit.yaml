@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Release.Name }}-ds
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: fluentbit
+spec:
+  selector:
+    matchLabels:
+      name: fluentbit
+  template:
+    metadata:
+      labels:
+        name: fluentbit
+    spec:
+      containers:
+      - name: fluentd
+        image: cr.fluentbit.io/fluent/fluent-bit:2.1.6
+        args:
+        - "-c"
+        - "/etc/fluent-bit/fluent-bit.conf"
+        resources:
+          requests:
+            cpu: {{ .Values.resources.requests.cpu }}
+            memory: {{ .Values.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
+        volumeMounts:
+        - name: pod-logs
+          mountPath: /var/log/pods
+        - name: {{ .Release.Name }}-configmap
+          mountPath: /etc/fluent-bit/fluent-bit.conf
+          subPath: fluent-bit.conf
+      volumes:
+      - name: pod-logs
+        hostPath:
+          path: /var/log/pods
+      - name: {{ .Release.Name }}-configmap
+        configMap:
+          name: {{ .Release.Name }}-configmap
