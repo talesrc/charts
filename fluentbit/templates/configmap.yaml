@@ -8,34 +8,59 @@ data:
     [INPUT]
       Name              tail
       Path              /var/log/pods/*/log-generator/*.log
+      multiline.parser  docker
 
-    {{- if eq .Values.output "opensearch" }}
+    {{- if .Values.output.opensearch.enabled }}
     [OUTPUT]
       Name  opensearch
       Match *
-      Host  opensearch-svc.opensearch
+      Host  {{ .Values.opensearch.host }}
       Port  9200
       Index my_index
       Type  my_type
-    {{- else if eq .Values.output "loki" }}
+    {{- end }}
+
+    {{- if .Values.output.loki.enabled }}
     [OUTPUT]
       name                   loki
-      host                   loki-svc.loki
+      host                   {{ .Values.output.loki.host }}
+      port                   {{ .Values.output.loki.port }}
       match                  *
       labels                 job=fluentbit
       auto_kubernetes_labels on
-    {{- else if eq .Values.output "datadog" }}
+    {{- end }}
+  
+    {{- if .Values.output.datadog.enabled }}
     [OUTPUT]
       Name             datadog
       Match            *
       Host             http-intake.logs.us5.datadoghq.com
       TLS              on
       compress         gzip
-      apikey           {{ .Values.datadog.apiKey }}
+      apikey           {{ .Values.output.datadog.apiKey }}
       dd_source        nginx
       dd_message_key   log
       dd_tags          env:tcc
-    {{- else }}
+    {{- end }}
+
+    {{- if .Values.output.dynatrace.enabled }}
+    [OUTPUT]
+      name  http
+      match *
+      header Content-Type application/json; charset=utf-8
+      header Authorization Api-Token {{ .Values.output.dynatrace.apiKey }}
+      allow_duplicated_headers false
+      host  {{ .Values.output.dynatrace.envId }}.live.dynatrace.com
+      Port  443
+      URI   /api/v2/logs/ingest
+      Format json
+      json_date_format iso8601
+      json_date_key timestamp
+      tls On
+      tls.verify Off
+    {{- end }}
+
+    {{- if .Values.output.stdout.enabled }}
     [OUTPUT]
       Name        stdout
       Match       *
